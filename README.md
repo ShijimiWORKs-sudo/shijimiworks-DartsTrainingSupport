@@ -32,6 +32,7 @@ DARTSLIVEでのレーティング向上を目的とした、個人用ダーツ�
 - [Recharts](https://recharts.org/)（グラフ）
 - [Tailwind CSS](https://tailwindcss.com/)（レスポンシブUI）
 - [Vitest](https://vitest.dev/) + Testing Library（テスト）
+- [Streamlit](https://streamlit.io/)（share.streamlit.ioへのデプロイ用の薄いラッパーのみ。UIはReact側がすべて担う）
 
 ## 起動方法
 
@@ -59,6 +60,51 @@ npm run build        # ビルド（tsc -b && vite build）
 
 「設定」画面から `darts-training-backup-YYYY-MM-DD.json` としてJSONエクスポート・インポートが可能です。
 
+## share.streamlit.ioへのデプロイ
+
+このアプリの本体はReact(Vite)製のSPAで、Streamlitとは仕組みが異なります。作り直すのではなく、
+ビルド済みの1枚の自己完結HTML（`static/embed.html`）をStreamlitの静的ファイル配信機能で配り、
+`streamlit_app.py`がそれをiframeとして表示するだけの薄いラッパー構成になっています
+（Streamlit本体のUIパーツ・状態管理は使っていません）。
+
+### 初回セットアップ
+
+1. 埋め込み用HTMLをビルドする（Reactアプリを1枚のHTMLに固める。JS/CSSはすべてインライン化される）:
+   ```bash
+   npm run build:embed
+   ```
+   `static/embed.html` が生成される。このファイルは**必ずコミットする**（Streamlit Cloudは
+   npm/viteを実行しないため、事前ビルドした結果をリポジトリに含める必要がある）。
+2. `git add static/embed.html streamlit_app.py requirements.txt .streamlit/config.toml`
+   → コミット → GitHubへpush。
+3. https://share.streamlit.io にログインし、「New app」→ このリポジトリ・ブランチ`main`・
+   Main file path に `streamlit_app.py` を指定してデプロイする。
+4. `requirements.txt`（`streamlit`のみ）を読み込んでビルドされ、数分でURLが発行される。
+
+### アプリを更新するたびに必要な手順
+
+`src/` 配下を変更したら、Streamlit側の表示にも反映するために毎回:
+
+```bash
+npm run build:embed
+git add static/embed.html
+git commit -m "chore: rebuild streamlit embed"
+git push
+```
+
+を実行する（Streamlit Cloudは自動でJS/CSSを再ビルドしない）。忘れると、Streamlit上の表示だけ
+古いままになるので注意。
+
+### なぜ `st.components.v1.html`（`srcdoc`）ではなく静的ファイル配信なのか
+
+`st.components.v1.html()` は内部的に `<iframe srcdoc="...">` を使うが、`srcdoc` ドキュメントの
+`window.location.href` は常に文字列 `"about:srcdoc"` になり、これはreact-routerが内部でURL解決の
+ベースに使うため非階層スキームだとURL構築に失敗し、アプリ全体がクラッシュして真っ白になる
+（実機で確認済みの既知の落とし穴）。回避策として、`.streamlit/config.toml` で
+`enableStaticServing = true` を有効にし、`static/embed.html` を **`src=`（本物のGETリクエスト）**
+でiframe読み込みすることで、`window.location.href` が通常のURLになり問題を回避している
+（`streamlit_app.py` の `components.iframe(...)` 呼び出しを参照）。
+
 ## PC / iPhone対応
 
 - PC: 左サイドバー＋横長ダッシュボード・グラフ
@@ -74,6 +120,13 @@ src/
   store/        Zustandストア（UIから呼ぶアクションをここに集約）
   components/   ui（共通UIパーツ）/ layout（レスポンシブレイアウト）/ games（各ゲームの入力フォーム）
   pages/        ダッシュボード・ミッション・練習・履歴・グラフ・弱点分析・設定 の各画面
+
+vite.singlefile.config.ts   npm run build:embed 用の別ビルド設定（1枚の自己完結HTMLを出力）
+scripts/rename-embed.mjs    ビルド後にファイル名をembed.htmlへ変更するだけの小スクリプト
+static/embed.html           npm run build:embedのビルド成果物（Streamlit用、コミット対象）
+streamlit_app.py            Streamlit Cloud用の薄いラッパー（React本体をiframeで表示するだけ）
+requirements.txt            Streamlit用のPython依存（streamlitのみ）
+.streamlit/config.toml      Streamlitの静的ファイル配信・ツールバー設定
 ```
 
 ## 今後の拡張予定（初期実装では対応しない）
