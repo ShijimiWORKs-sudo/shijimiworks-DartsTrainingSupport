@@ -62,6 +62,8 @@ npm run build        # ビルド（tsc -b && vite build）
 
 ## share.streamlit.ioへのデプロイ
 
+**公開URL: https://shijimiworks-darts-training-support.streamlit.app/**
+
 このアプリの本体はReact(Vite)製のSPAで、Streamlitとは仕組みが異なります。作り直すのではなく、
 ビルド済みの1枚の自己完結HTML（`static/embed.html`）をStreamlitの静的ファイル配信機能で配り、
 `streamlit_app.py`がそれをiframeとして表示するだけの薄いラッパー構成になっています
