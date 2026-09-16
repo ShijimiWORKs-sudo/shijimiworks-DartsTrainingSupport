@@ -177,7 +177,16 @@ export interface NumberPracticeSet {
   miss: number;
 }
 
+/**
+ * Two selectable 1501 NUMBER PRACTICE patterns (ユーザー実運用フィードバックに基づく):
+ *   - ROUND: 1ラウンドごとにナンバーを15→20の順で変えていく方式。
+ *   - GAME: 1ゲームを20→15の順で通して投げる方式。
+ * どちらもBULLは含まない（BULL練は別メニュー）。
+ */
+export type NumberPracticeMode = 'ROUND' | 'GAME';
+
 export interface NumberPracticeResult {
+  mode: NumberPracticeMode;
   sets: NumberPracticeSet[];
 }
 
@@ -218,26 +227,59 @@ export interface StandardCricketResult {
   numbers: Record<CricketNumberKey, NumberStat>;
 }
 
-export interface HiddenCricketResult {
-  score: number;
-  numbers: Partial<Record<CricketNumberKey, NumberStat>>;
+/**
+ * HIDDEN CRICKETは標準クリケットの15〜20+BULLではなく、実際にどのナンバーが
+ * 対象かプレイ中には分からない（当ててみて判明する）ゲーム。判明した時点で
+ * ユーザーがそのナンバーを追加記録できるよう、固定の辞書ではなく動的なリストにする。
+ * 1GAMEは20ROUNDで終了する（§4フィードバック）。
+ */
+export interface HiddenCricketEntry {
+  number: string; // '1'..'20' または 'BULL'。判明した時点でユーザーが選択して追加する。
+  single: number;
+  double: number;
+  triple: number;
 }
 
-export interface ShootOutNumberStat {
-  hit: number;
-  total: number;
+export interface HiddenCricketResult {
+  score: number;
+  entries: HiddenCricketEntry[];
+}
+
+export type ShootOutHitType = 'SINGLE' | 'DOUBLE' | 'TRIPLE';
+
+/** SHOOT OUTは各ナンバーに1投。命中(OK)/失敗(NG)と、命中時のS/D/Tのみを記録する。 */
+export interface ShootOutEntry {
+  hit: boolean;
+  hitType?: ShootOutHitType;
 }
 
 export interface ShootOutResult {
-  numbers: Record<string, ShootOutNumberStat>; // '1'..'20','BULL'
+  numbers: Record<string, ShootOutEntry>; // '1'..'20','BULL'
+  finalScore: number;
+}
+
+/**
+ * HALF-ITの実際のルールに合わせた9ラウンド固定構成:
+ * 15 → 16 → DOUBLE(INBULL含む) → 17 → 18 → TRIPLE → 19 → 20 → BULL。
+ * ラウンドごとにS/D/T命中本数・MISS本数・HALF判定（狙いを外して得点が半分になったか）を記録し、
+ * 最終得点のみを別途記録する（各ラウンドの得点そのものは記録しない）。
+ */
+export type HalfItTarget = '15' | '16' | 'DOUBLE' | '17' | '18' | 'TRIPLE' | '19' | '20' | 'BULL';
+
+export const HALF_IT_TARGETS: HalfItTarget[] = ['15', '16', 'DOUBLE', '17', '18', 'TRIPLE', '19', '20', 'BULL'];
+
+export interface HalfItRound {
+  target: HalfItTarget;
+  single: number;
+  double: number;
+  triple: number;
+  miss: number;
+  halved: boolean;
 }
 
 export interface HalfItResult {
-  score: number;
-  miss: number;
-  bull: number;
-  highScore: number;
-  rounds: number[];
+  rounds: HalfItRound[]; // 9件固定、HALF_IT_TARGETSの順
+  finalScore: number;
 }
 
 export interface FinishTrainerAttempt {
@@ -250,11 +292,18 @@ export interface FinishTrainerResult {
   attempts: FinishTrainerAttempt[];
 }
 
+/**
+ * BIG BULLの判定・得点ルール（トリプルより内側はBULL判定）:
+ *   - OUTER BULL、またはトリプルより内側（トリプルリング自体を含む内側）は50点。
+ *   - INNER BULLは70点。
+ * 記録したいのは最終得点・OUTER BULL数・INNER BULL数（＋STATS計算用のMISS・総投球数）。
+ */
 export interface BigBullResult {
-  bull: number;
+  outerBull: number;
+  innerBull: number;
   miss: number;
-  score: number;
   totalDarts: number;
+  finalScore: number;
 }
 
 /** LIVE MATCH rules are fixed per §12: 01=701 / CRICKET=STANDARD CRICKET, OPEN IN, DOUBLE OUT, FULL BULL, no handicap. */

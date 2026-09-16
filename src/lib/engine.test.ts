@@ -131,7 +131,7 @@ describe('analyzeWeakness / recommendFromWeakness (§34)', () => {
       playedAt: new Date().toISOString(),
       payload: {
         gameId: 'NUMBER_PRACTICE',
-        data: { sets: [{ target, darts: single + miss, single, double: 0, triple: 0, miss }] },
+        data: { mode: 'GAME', sets: [{ target, darts: single + miss, single, double: 0, triple: 0, miss }] },
       },
     };
   }

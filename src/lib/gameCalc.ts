@@ -1,9 +1,10 @@
 import type {
+  BigBullResult,
   CountUpResult,
   CricketCountUpResult,
   EaglesEyeResult,
+  HalfItResult,
   NumberPracticeSet,
-  ShootOutResult,
 } from '../types';
 
 export function round1(n: number): number {
@@ -59,12 +60,45 @@ export function numberPracticeStats(set: NumberPracticeSet): NumberPracticeStats
 }
 
 // ---------------------------------------------------------------------------
-// SHOOT OUT (§22)
+// HALF-IT (§23) — 9ラウンド固定。STATSはS/D/T命中・MISSの合計から算出。
 // ---------------------------------------------------------------------------
-export function shootOutWeakNumbers(r: ShootOutResult, limit = 3): { number: string; rate: number }[] {
-  return Object.entries(r.numbers)
-    .filter(([, v]) => v.total > 0)
-    .map(([number, v]) => ({ number, rate: round1((v.hit / v.total) * 100) }))
-    .sort((a, b) => a.rate - b.rate)
-    .slice(0, limit);
+export interface HalfItStats {
+  totalDarts: number;
+  hits: number;
+  hitRate: number;
+  halvedRounds: number;
+}
+
+export function halfItStats(r: HalfItResult): HalfItStats {
+  let single = 0;
+  let double = 0;
+  let triple = 0;
+  let miss = 0;
+  let halvedRounds = 0;
+  for (const round of r.rounds) {
+    single += round.single;
+    double += round.double;
+    triple += round.triple;
+    miss += round.miss;
+    if (round.halved) halvedRounds += 1;
+  }
+  const hits = single + double + triple;
+  const totalDarts = hits + miss;
+  return { totalDarts, hits, hitRate: totalDarts ? round1((hits / totalDarts) * 100) : 0, halvedRounds };
+}
+
+// ---------------------------------------------------------------------------
+// BIG BULL — OUTER BULL / INNER BULLの命中率STATS
+// ---------------------------------------------------------------------------
+export interface BigBullStats {
+  bullRate: number; // (OUTER+INNER) / totalDarts
+  innerRate: number; // INNER / totalDarts
+}
+
+export function bigBullStats(r: BigBullResult): BigBullStats {
+  if (!r.totalDarts) return { bullRate: 0, innerRate: 0 };
+  return {
+    bullRate: round1(((r.outerBull + r.innerBull) / r.totalDarts) * 100),
+    innerRate: round1((r.innerBull / r.totalDarts) * 100),
+  };
 }

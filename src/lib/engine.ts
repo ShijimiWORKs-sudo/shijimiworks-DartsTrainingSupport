@@ -245,8 +245,8 @@ export function analyzeWeakness(results: GameResult[], lookbackDays = WEAKNESS_L
         add(String(round.target), hit, 1);
       }
     } else if (p.gameId === 'SHOOT_OUT') {
-      for (const [num, stat] of Object.entries(p.data.numbers)) {
-        add(num, stat.hit, stat.total);
+      for (const [num, entry] of Object.entries(p.data.numbers)) {
+        add(num, entry.hit ? 1 : 0, 1);
       }
     }
   }
